@@ -2,6 +2,7 @@ import subprocess
 import threading
 import queue
 import sys
+import os
 
 STDOUT_TIMEOUT = 1
 
@@ -10,8 +11,66 @@ def read_stdout(proc, output_queue):
         output_queue.put(line)
     proc.stdout.close()
 
+def start_process(program_name):
+    if not os.path.exists(str(program_name)):
+        print(f"Program {program_name} does not exist.")
+        return None, None
+   
+    proc = subprocess.Popen(['python', str(program_name)], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+        
+    output_queue = queue.Queue()
+    threading.Thread(target=read_stdout, args=(proc, output_queue), daemon=True).start()
 
+    return proc, output_queue
+
+class Controller:
+    def __init__(self, program_name=None):
+        self.program_name = program_name
+        self.rng_proc, self.output_queue = start_process(program_name)
+        
+        if self.rng_proc is None:
+            sys.exit(1)
+
+    def get_response(self):
+        try:
+            rng_response = self.output_queue.get(timeout=STDOUT_TIMEOUT).strip()
+            return rng_response
+        except queue.Empty:
+            return None
+        
+    def send_command(self, command):
+        self.rng_proc.stdin.write(command + '\n')
+        self.rng_proc.stdin.flush()
+        
+        return self.get_response()
+    
 def main():
+    controller = Controller('program_a.py')
+    random_numbers = []
+    
+    ping_response = controller.send_command("Hi")
+    if ping_response != "Hi":
+        print("Program A did not respond correctly.")
+        controller.send_command("Shutdown")
+        return
+    
+    for _ in range(100):
+        number = controller.send_command("GetRandom")
+        random_numbers.append(int(number))
+        
+    controller.send_command("Shutdown")
+    
+    # Doing the work
+    random_numbers.sort()
+    print(f"Sorted random numbers: {random_numbers}")
+    
+    if len(random_numbers) % 2 == 0:
+        median = (random_numbers[len(random_numbers) // 2 - 1] + random_numbers[len(random_numbers) // 2]) / 2
+    else:
+        median = random_numbers[len(random_numbers) // 2]
+    print(f"Median: {median}")
+
+def _test():
     rng_proc = subprocess.Popen(['python', 'program_a.py'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
 
     output_queue = queue.Queue()
