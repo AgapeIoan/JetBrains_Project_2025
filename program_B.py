@@ -5,6 +5,7 @@ import sys
 import os
 
 STDOUT_TIMEOUT = 1
+DEBUG = False
 
 def read_stdout(proc, output_queue):
     for line in iter(proc.stdout.readline, ''):
@@ -16,8 +17,27 @@ def start_process(program_name):
         print(f"Program {program_name} does not exist.")
         return None, None
    
-    proc = subprocess.Popen(['python', str(program_name)], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+    if program_name.endswith('.kt'):
+        print("Compiling Kotlin program...")
+        compile_proc = subprocess.run(['kotlinc', program_name, '-include-runtime', '-d', 'program_A.jar'])
         
+        if compile_proc.returncode != 0:
+            print(f"Failed to compile {program_name}")
+            return None, None
+        
+        print("Kotlin program compiled successfully.")
+        proc = subprocess.Popen(['java', '-jar', 'program_A.jar'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+    
+    elif program_name.endswith('.py'):
+        proc = subprocess.Popen(['python', program_name], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+    
+    elif program_name.endswith('.jar'):
+        proc = subprocess.Popen(['java', '-jar', program_name], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+    
+    else:
+        print(f"Unsupported file type: {program_name}")
+        return None, None
+    
     output_queue = queue.Queue()
     threading.Thread(target=read_stdout, args=(proc, output_queue), daemon=True).start()
 
@@ -36,6 +56,7 @@ class Controller:
             rng_response = self.output_queue.get(timeout=STDOUT_TIMEOUT).strip()
             return rng_response
         except queue.Empty:
+            # Timeout, RNG did not respond
             return None
         
     def send_command(self, command):
@@ -46,6 +67,9 @@ class Controller:
     
 def main():
     controller = Controller('program_a.py')
+    # controller = Controller('program_a.kt')
+    # controller = Controller('program_a.jar')
+    
     random_numbers = []
     
     ping_response = controller.send_command("Hi")
@@ -69,6 +93,57 @@ def main():
     else:
         median = random_numbers[len(random_numbers) // 2]
     print(f"Median: {median}")
+
+def debug():
+    PROGRAMS = {
+        "1": "program_a.py",
+        "2": "program_a.kt",
+        "3": "program_a.jar"
+    }
+    
+    while True:
+        print("Debug mode:")
+        print("""Select a program to run:
+        1. program_a.py
+        2. program_a.kt
+        3. program_a.jar
+        4. Custom program name
+        5. Exit
+            """)
+        
+        choice = input("Enter your choice: ")
+        if choice == '5':
+            print("Exiting.")
+            return
+        
+        elif choice == '4':
+            program_name = input("Enter the program name: ")
+            controller = Controller(program_name)
+            break
+            
+        elif choice in PROGRAMS:
+            program_name = PROGRAMS.get(choice)
+            controller = Controller(program_name)
+            break
+            
+        else:
+            print("Invalid choice.")
+            continue
+        
+    # controller = Controller('program_a.py')
+    # controller = Controller('program_a.kt')
+    # controller = Controller('program_a.jar')
+    
+    print("Running " + controller.program_name)
+    print("Available commands: Hi, GetRandom, Shutdown")
+    while True:
+        command = input("Enter a command: ")
+        response = controller.send_command(command)
+        print(f"Response:\n{response}")
+        
+        if command == 'Shutdown':
+            print("Shutting down.")
+            break
 
 def _test():
     rng_proc = subprocess.Popen(['python', 'program_a.py'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
@@ -100,4 +175,7 @@ def _test():
         rng_proc.wait()
 
 if __name__ == "__main__":
-    main()
+    if DEBUG:
+        debug()
+    else:
+        main()
