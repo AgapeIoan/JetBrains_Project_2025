@@ -6,6 +6,7 @@ import os
 
 STDOUT_TIMEOUT = 1
 DEBUG = False
+RNG_PROGRAM_NAME = 'program_a.py'
 
 def read_stdout(proc, output_queue):
     for line in iter(proc.stdout.readline, ''):
@@ -66,7 +67,7 @@ class Controller:
         return self.get_response()
     
 def main():
-    controller = Controller('program_a.py')
+    controller = Controller(RNG_PROGRAM_NAME)
     # controller = Controller('program_a.kt')
     # controller = Controller('program_a.jar')
     
