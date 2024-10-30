@@ -27,7 +27,7 @@ def main():
 
         if message_from_controller == "Shutdown":
             send_message("Program A: Shutting down.")
-            break
+            sys.exit(0)
 
 
 if __name__ == "__main__":
