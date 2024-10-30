@@ -1,23 +1,32 @@
-import subprocess
+import sys
+import random
 
-proc_b = subprocess.Popen(['python3', 'program_b.py'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+def process_message(message):
+    COMMANDS = {
+        "Hi": "Hi",
+        "GetRandom": random.randint(1, 100_000),
+        "Shutdown": "shutdown"
+    }
+    
+    return COMMANDS.get(message, "")
 
-try:
+def send_message(message = ""):
+    if message == "":
+        return
+    
+    sys.stdout.write(message + '\n')
+    sys.stdout.flush()
+
+def main():
     while True:
-        message_to_b = input("Program A: Enter a message: ")
+        message_from_a = sys.stdin.readline().strip()
+        response = process_message(message_from_a)
+        send_message(response)
 
-        proc_b.stdin.write(message_to_b + '\n')
-        proc_b.stdin.flush()
-
-        response_from_b = proc_b.stdout.readline().strip()
-        print(f"Program A received:\n{response_from_b}")
-
-        if message_to_b.lower() == 'shutdown':
-            print("Program A: Shutting down.")
+        if message_from_a == "Shutdown":
+            send_message("Program A: Shutting down.")
             break
 
-finally:
-    # Close communication
-    proc_b.stdin.close()
-    proc_b.stdout.close()
-    proc_b.wait()
+
+if __name__ == "__main__":
+    main()
