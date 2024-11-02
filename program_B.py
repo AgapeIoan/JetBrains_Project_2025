@@ -7,7 +7,6 @@ import argparse
 
 STDOUT_TIMEOUT = 1
 DEBUG = False
-RNG_PROGRAM_NAME = 'program_a.py'
 
 def read_stdout(proc, output_queue):
     for line in iter(proc.stdout.readline, ''):
@@ -133,10 +132,6 @@ def debug():
         else:
             print("Invalid choice.")
             continue
-        
-    # controller = Controller('program_a.py')
-    # controller = Controller('program_a.kt')
-    # controller = Controller('program_a.jar')
     
     print("Running " + controller.program_name)
     print("Available commands: Hi, GetRandom, Shutdown")
